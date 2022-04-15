@@ -111,7 +111,7 @@ example(of: "never") {
         })
 }
 // 이렇게 하면 Completed 조차 프린트 되지 않는다.
-// 그럼 이 코드가 제대로 작동하는지 어떻게 알아?? -> 나중에 Challenges section에서 보재요..
+// 그럼 이 코드가 제대로 작동하는지 어떻게 알아?? -> 나중에 Challenges section에서 보재요.. -> debug라는 operator를 통해 알 수 있다!!
 
 
 
@@ -183,6 +183,7 @@ enum MyError: Error {
 example(of: "create") {
     let disposeBag = DisposeBag()
     
+    // Observable.create(<#T##subscribe: (AnyObserver<_>) -> Disposable##(AnyObserver<_>) -> Disposable#>)
     // 여기서 AnyObserver란 generic 타입으로 Observable sequence에 값을 쉽게 추가할 수 있다. 추가한 값은 subscriber에 방출된다.
     Observable<String>.create { observer  in
         observer.onNext("1")
@@ -205,10 +206,90 @@ example(of: "create") {
     ).disposed(by: disposeBag)
 }
 
+// 여기서 completed, error, dispose도 하지 않으면 메모리 낭비 발생
+
+
 
 // Creating observable factories
 // subscriber를 기다리는 (날 시동시켜줘!) Observable을 만드는 대신, 각 subscriber에게 새롭게 Observable 항목을 제공하는 Obaservable factory를 만드는 방법도 있다.
-// Observable이 생성되는 시점을 구독자에 의해서 구독되기 전까지 미뤄주는 역할을 합니다.
+// Observable이 생성되는 시점을 구독자에 의해서 구독되기 전까지 미뤄주는 역할을 합니다. -> 어떤 상황에서 사용하는지 왜 사용하는지 감이 잘...
+
+/*
+ex1) `Observable.just(doSomeMath())` 라는 Observable이 있다고 해 봅시다.
+
+여기서 `doSomeMath()` 라는 함수는 Observable이 선언되는 시점에 미리 계산을 하게 되는데요.
+
+실제로 테스트 해 보시면 아래와 같은 결과가 나옵니다.
+ 
+ ```swift
+ let mathObservable = Observable.just(doSomeMath())
+
+ func doSomeMath() {
+     print("1 + 1 = 2")
+ }
+ ```
+ 
+ ->
+ 
+ 1 + 1 = 2
+ 
+ 이렇게 `mathObservable`을 구독하지도 않았는데 `doSomething()` 이 호출된 것을 보실 수 있습니다.
+
+ `.just` 뿐만 아니라 `.from`, `.of` 도 모두  선언되는 시점에 저렇게 미리 계산을 하게 됩니다.
+
+ 그런데 만약 위처럼 `doSomeMath()` 라는 함수가 간단한 `1+1` 정도의 계산을 한다면 구독되기 전에 미리 계산을 해주는 것에 큰 문제가 생기지는 않겠죠.
+
+ 하지만 여기서 `doSomeMath()` 라는 함수가 엄청 복잡해서 뭐 예를들어 10초 이상은 걸리는 그런 작업이라면 Observable을 구독하기도 전에 그 10초를 소요 시키는 것은 큰 낭비가 되고, 주요 스레드를 방해하는 불상사가 생기겠죠.
+
+ 실제 앱 구동에서는 10초간 정지되는 것 처럼 보이겠구요.
+
+ 네.. 그런 결과를 원하시는 분들은 없겠죠?
+
+ 이럴 때 굳이 구독되기 전에 미리 계산을 할 필요가 없는 그런 Observable들을 deferred로 처리하면 되는 것 입니다!
+ 
+ let deferredSequence = Observable<Any>.deferred {
+         return Observable.just(doSomething())
+ }
+ 
+ 이렇게 감싸주게 되면 구독이 되기 전까지는 저 doSomething() 이라는 작업을 실행하지 않게 되는 것이죠.
+ 
+*/
+
+/*
+ex2) 예를 들어 아래와 같이 위치 권한이 획득 되었는지 안되었는지에 대해 정보를 가져오는 Observable이 있다고 해 봅시다. 기본 위치 권한 값은 `false` 상태라고 가정합니다.
+ 
+ ```swift
+ func permissionObservable() -> Observable<AuthorizationStatus> {
+         return .just(Auths.locationAuthorizationStatus())
+ }
+ ```
+
+ 그런데 저렇게 선언 되어있는 상태에서 Observable을 구독하기 전에 사용자가 위치 권한을 `false`에서 `true`로 변경 했다고 합시다.
+
+ 그리고서 위치 권한에 대한 저 Observable을 구독하면 어떤 결과가 나올까요?
+
+ 네 그러습니다.
+
+ 위치 권한은 저 Observable이 생성 될 시점에 가져와 진 것이니 `false` 가 나옵니다 😨
+
+ 하지만 실제 위치 권한 상태는 `true` 이죠. Observable을 구독하기 전에 `true`로 변경 했으니까요!
+
+ 그럼 Observable* 구독과 동시에 가장 최신 상태를 불러올 수 있도록 하려면 deferred를 사용하면 되겠죠!
+
+ ```swift
+ func permissionObservable() -> Observable<AuthorizationStatus> {
+         return Obsrevable.deferred {
+                 return .just(Auths.locationAuthorizationStatus())
+         }
+ }
+ ```
+
+ 이런 예와 같이 Observable을 구독하는 동시에 최신 값을 가져와야 하는 경우에도 **deferred** 연산자가 유용하게 사용된답니다🙃
+*/
+
+
+// Observable.deferred(<#T##observableFactory: () throws -> Observable<_>##() throws -> Observable<_>#>)
+// Observable을 리턴해준다
 
 
 example(of: "deferred") {

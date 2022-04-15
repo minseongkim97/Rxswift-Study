@@ -1,6 +1,8 @@
 import UIKit
 import RxSwift
 
+let disposeBag = DisposeBag()
+
 // 도움 메서드
 public func example(of description: String, action: () -> Void) {
     print("\n--- Example of:", description, "---")
@@ -22,6 +24,50 @@ public func example(of description: String, action: () -> Void) {
 // onNext, onError, onCompleted 대신에 `.success(value)`, `.failure(error)` 이렇게 두 가지 이벤트 밖에 없다.
 // 사용: 성공 또는 실패로 확인될 수 있는 1회성 프로세스 (예. 데이터 다운로드, 디스크에서 데이터 로딩)
 
+// 차이점 확인하기
+/*
+ ex1)
+ Single<Int>.just(1)
+     .subscribe(
+         onSuccess: <#T##((Int) -> Void)?##((Int) -> Void)?##(Int) -> Void#>,
+         onFailure: <#T##((Error) -> Void)?##((Error) -> Void)?##(Error) -> Void#>,
+         onDisposed: <#T##(() -> Void)?##(() -> Void)?##() -> Void#>
+     )
+ 
+ ex2)
+ Observable<Int>.just(1)
+     .asSingle()
+     .subscribe(
+         onSuccess: <#T##((Int) -> Void)?##((Int) -> Void)?##(Int) -> Void#>,
+         onFailure: <#T##((Error) -> Void)?##((Error) -> Void)?##(Error) -> Void#>,
+         onDisposed: <#T##(() -> Void)?##(() -> Void)?##() -> Void#>
+     )
+ 
+ ex3)
+ Observable<String>
+     .create { observer in
+         observer.onError(<#T##Error#>)
+         return Disposables.create()
+     }
+     .asSingle()
+     .subscribe(
+         onSuccess: <#T##((String) -> Void)?##((String) -> Void)?##(String) -> Void#>,
+         onFailure: <#T##((Error) -> Void)?##((Error) -> Void)?##(Error) -> Void#>,
+         onDisposed: <#T##(() -> Void)?##(() -> Void)?##() -> Void#>
+     )
+     .disposed(by: disposeBag)
+*/
+
+/*
+ Observable<Int>.just(1)
+    .subscribe(
+        onNext: <#T##((Int) -> Void)?##((Int) -> Void)?##(Int) -> Void#>,
+        onError: <#T##((Error) -> Void)?##((Error) -> Void)?##(Error) -> Void#>,
+        onCompleted: <#T##(() -> Void)?##(() -> Void)?##() -> Void#>,
+        onDisposed: <#T##(() -> Void)?##(() -> Void)?##() -> Void#>
+    )
+*/
+
 // Completable
 // .completed 또는 .error(error) 만을 방출하며, 이 외 어떠한 값도 방출하지 않는다.
 // 성공 여부만 전달해주고 싶을 때에는 Single이 아닌 Completable을 사용하도록 하자!! -> ex) 파일쓰기
@@ -36,6 +82,7 @@ public func example(of description: String, action: () -> Void) {
 // 예시 -> single을 이용해서 Resources 폴더 내의 Copyright.txt 파일의 일부 텍스트를 읽어야 한다고 가정해보자.
 example(of: "Single") {
     let disposeBag = DisposeBag()
+
     
     enum FileReadError: Error {
         case fileNotFound, unreadable, encodingFailed

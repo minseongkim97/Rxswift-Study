@@ -62,7 +62,7 @@ Trait를 사용해서 코드 가독성으로 높일 수 있다. -> 내가 짜고
 
 # Subject
 
-[Subject]()
+[Subject](https://github.com/minseongkim97/Rxswift-Study/blob/main/Subjects.playground/Contents.swift)
 
 Observable이자 Observer
 
